@@ -682,20 +682,24 @@ string YulUtilFunctions::overflowCheckedIntMulFunction(IntegerType const& _type)
 			function <functionName>(x, y) -> product {
 				x := <cleanupFunction>(x)
 				y := <cleanupFunction>(y)
-				<?signed>
-					// overflow, if x > 0, y > 0 and x > (maxValue / y)
-					if and(and(sgt(x, 0), sgt(y, 0)), gt(x, div(<maxValue>, y))) { <panic>() }
-					// underflow, if x > 0, y < 0 and y < (minValue / x)
-					if and(and(sgt(x, 0), slt(y, 0)), slt(y, sdiv(<minValue>, x))) { <panic>() }
-					// underflow, if x < 0, y > 0 and x < (minValue / y)
-					if and(and(slt(x, 0), sgt(y, 0)), slt(x, sdiv(<minValue>, y))) { <panic>() }
-					// overflow, if x < 0, y < 0 and x < (maxValue / y)
-					if and(and(slt(x, 0), slt(y, 0)), slt(x, sdiv(<maxValue>, y))) { <panic>() }
-				<!signed>
-					// overflow, if x != 0 and y > (maxValue / x)
-					if and(iszero(iszero(x)), gt(y, div(<maxValue>, x))) { <panic>() }
-				</signed>
 				product := mul(x, y)
+				<?signed>
+					<?gt128bit>
+						// overflow, if x > 0, y > 0 and x > (maxValue / y)
+						if and(and(sgt(x, 0), sgt(y, 0)), gt(x, div(<maxValue>, y))) { <panic>() }
+						// underflow, if x > 0, y < 0 and y < (minValue / x)
+						if and(and(sgt(x, 0), slt(y, 0)), slt(y, sdiv(<minValue>, x))) { <panic>() }
+						// underflow, if x < 0, y > 0 and x < (minValue / y)
+						if and(and(slt(x, 0), sgt(y, 0)), slt(x, sdiv(<minValue>, y))) { <panic>() }
+						// overflow, if x < 0, y < 0 and x < (maxValue / y)
+						if and(and(slt(x, 0), slt(y, 0)), slt(x, sdiv(<maxValue>, y))) { <panic>() }
+					<!gt128bit>
+						if or(sgt(product, <maxValue>), slt(product, <minValue>)) { <panic>() }
+					</gt128bit>
+				<!signed>
+					// overflow, if x != 0 and y != product/x
+					if and(iszero(iszero(x)), iszero(eq(y, div(and(product, <bitMask>), x)))) { <panic>() }
+				</signed>
 			}
 			)")
 			("functionName", functionName)
@@ -704,6 +708,9 @@ string YulUtilFunctions::overflowCheckedIntMulFunction(IntegerType const& _type)
 			("minValue", toCompactHexWithPrefix(u256(_type.minValue())))
 			("cleanupFunction", cleanupFunction(_type))
 			("panic", panicFunction(PanicCode::UnderOverflow))
+			("gt128bit", _type.numBits() > 128)
+			//("256bit", _type.numBits() == 256)
+			("bitMask", toCompactHexWithPrefix((u256(1) << _type.numBits()) - 1))
 			.render();
 	});
 }
