@@ -72,6 +72,33 @@ void InterpreterState::dumpTraceAndState(ostream& _out, bool _disableMemoryTrace
 	}
 	_out << "Storage dump:" << endl;
 	dumpStorage(_out);
+
+	if (!calldata.empty())
+	{
+		_out << "Calldata dump:";
+
+		for (size_t offset = 0; offset < calldata.size(); ++offset)
+		{
+			if (offset % 32 == 0)
+				_out <<
+					std::endl <<
+					"  " <<
+					std::uppercase <<
+					std::hex <<
+					std::setfill(' ') <<
+					std::setw(4) <<
+					offset <<
+					": ";
+
+			_out <<
+				std::hex <<
+				std::setw(2) <<
+				std::setfill('0') <<
+				static_cast<int>(calldata[offset]);
+		}
+
+		_out << endl;
+	}
 }
 
 void Interpreter::run(
@@ -288,7 +315,81 @@ void ExpressionEvaluator::operator()(FunctionCall const& _funCall)
 		if (BuiltinFunctionForEVM const* fun = dialect->builtin(_funCall.functionName.name))
 		{
 			EVMInstructionInterpreter interpreter(m_state, m_disableMemoryTrace);
-			setValue(interpreter.evalBuiltin(*fun, _funCall.arguments, values()));
+
+			u256 value = interpreter.evalBuiltin(*fun, _funCall.arguments, values());
+
+			u256 memOutOffset;
+			u256 memOutSize;
+			u256 callvalue = 0;
+
+			if (fun->instruction) switch(*fun->instruction)
+			{
+				case evmasm::Instruction::CALL:
+				case evmasm::Instruction::CALLCODE:
+					memOutOffset = values()[5];
+					memOutSize = values()[6];
+					callvalue = values()[2];
+					[[fallthrough]];
+				case evmasm::Instruction::DELEGATECALL:
+				case evmasm::Instruction::STATICCALL:
+				{
+					if (
+						*fun->instruction == evmasm::Instruction::DELEGATECALL ||
+						*fun->instruction == evmasm::Instruction::STATICCALL
+					)
+					{
+						memOutOffset = values()[4];
+						memOutSize = values()[5];
+					}
+					Scope tmpScope;
+					InterpreterState tmpState;
+					tmpState.calldata = m_state.calldata;
+					tmpState.callvalue = callvalue;
+
+					auto newInterpreter = getNewInterpreter(tmpState, tmpScope);
+
+					// Find root scope / ast
+					Scope* rootScope = &m_scope;
+					Scope* lastScope;
+
+					while(rootScope->parent)
+					{
+						lastScope = rootScope;
+						rootScope = rootScope->parent;
+					}
+
+					Block const* ast = nullptr;
+
+					for (auto &&[block, scope]: rootScope->subScopes)
+						if (scope.get() == lastScope)
+						{
+							ast = block;
+							break;
+						}
+
+					yulAssert(ast);
+
+					try
+					{
+						(*newInterpreter)(*ast);
+					}
+					catch (ExplicitlyTerminatedWithReturn const&)
+					{
+						copyZeroExtended(
+							m_state.memory,
+							newInterpreter->returnData(),
+							memOutOffset.convert_to<size_t>(),
+							0,
+							memOutSize.convert_to<size_t>()
+						);
+					}
+					break;
+				}
+				default:
+					{}
+			}
+
+			setValue(value);
 			return;
 		}
 	}
@@ -316,13 +417,13 @@ void ExpressionEvaluator::operator()(FunctionCall const& _funCall)
 		variables[fun->returnVariables.at(i).name] = 0;
 
 	m_state.controlFlowState = ControlFlowState::Default;
-	Interpreter interpreter(m_state, m_dialect, *scope, m_disableMemoryTrace, std::move(variables));
-	interpreter(fun->body);
+	shared_ptr<Interpreter> interpreter = getInterpreter(std::move(variables));
+	(*interpreter)(fun->body);
 	m_state.controlFlowState = ControlFlowState::Default;
 
 	m_values.clear();
 	for (auto const& retVar: fun->returnVariables)
-		m_values.emplace_back(interpreter.valueOfVariable(retVar.name));
+		m_values.emplace_back(interpreter->valueOfVariable(retVar.name));
 }
 
 u256 ExpressionEvaluator::value() const
