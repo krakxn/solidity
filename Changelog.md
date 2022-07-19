@@ -1,5 +1,9 @@
 ### 0.8.16 (unreleased)
 
+Important Bugfixes:
+ * Code Generation: Fix a data corruption: When abi-encoding a dynamic array followed by a static calldata array the length of the dynamic array would get overwritten by ``0``.
+
+
 Language Features:
 
 
@@ -10,6 +14,7 @@ Compiler Features:
  * Yul Optimizer: Add rule to convert `mod(add(X, Y), A)` into `addmod(X, Y, A)`, if `A` is a power of two.
  * Code Generator: More efficient code for checked addition and subtraction.
  * Error Reporter: More readable and informative error/warning messages.
+
 
 Bugfixes:
  * Commandline Interface: Disallow the following options outside of the compiler mode: ``--via-ir``,``--metadata-literal``, ``--metadata-hash``, ``--model-checker-show-unproved``, ``--model-checker-div-mod-no-slacks``, ``--model-checker-engine``, ``--model-checker-invariants``, ``--model-checker-solvers``, ``--model-checker-timeout``, ``--model-checker-contracts``, ``--model-checker-targets``.

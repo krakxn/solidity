@@ -185,11 +185,13 @@ object "D_27" {
                 {
                     mstore(add(dst, i), mload(add(src, i)))
                 }
+
                 if gt(i, length)
                 {
                     // clear end
                     mstore(add(dst, length), 0)
                 }
+
             }
 
             function round_up_to_mul_of_32(value) -> result {

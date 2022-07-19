@@ -1,5 +1,14 @@
 [
     {
+        "uid": "SOL-2022-6",
+        "name": "CorruptABIEncodingWithYul",
+        "summary": "Encoding a static calldata array followed by a dynamic array results in a corrupt length value for the dynamic array.",
+        "description": "When ABI-encoding a static calldata array, we used to clean the last 32 byte slot after the array data by overwriting it with ``0``. This is problematic if the data of the dynamic array was already written there. This is the case when encoding a dynamic array followed by a static calldata array. Then the length of the dynamic array is overwritten.",
+        "introduced": "0.5.8",
+        "fixed": "0.8.16",
+        "severity": "low"
+    },
+    {
         "uid": "SOL-2022-5",
         "name": "DirtyBytesArrayToStorage",
         "summary": "Copying ``bytes`` arrays from memory or calldata to storage may result in dirty storage values.",

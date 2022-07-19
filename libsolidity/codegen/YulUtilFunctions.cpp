@@ -80,7 +80,7 @@ string YulUtilFunctions::splitExternalFunctionIdFunction()
 	});
 }
 
-string YulUtilFunctions::copyToMemoryFunction(bool _fromCalldata)
+string YulUtilFunctions::copyToMemoryFunction(bool _fromCalldata, bool _cleanup)
 {
 	string functionName = "copy_" + string(_fromCalldata ? "calldata" : "memory") + "_to_memory";
 	return m_functionCollector.createFunction(functionName, [&]() {
@@ -89,11 +89,14 @@ string YulUtilFunctions::copyToMemoryFunction(bool _fromCalldata)
 			return Whiskers(R"(
 				function <functionName>(src, dst, length) {
 					calldatacopy(dst, src, length)
+					<?cleanup>
 					// clear end
 					mstore(add(dst, length), 0)
+					</cleanup>
 				}
 			)")
 			("functionName", functionName)
+			("cleanup", _cleanup)
 			.render();
 		}
 		else
@@ -105,14 +108,17 @@ string YulUtilFunctions::copyToMemoryFunction(bool _fromCalldata)
 					{
 						mstore(add(dst, i), mload(add(src, i)))
 					}
+					<?cleanup>
 					if gt(i, length)
 					{
 						// clear end
 						mstore(add(dst, length), 0)
 					}
+					</cleanup>
 				}
 			)")
 			("functionName", functionName)
+			("cleanup", _cleanup)
 			.render();
 		}
 	});

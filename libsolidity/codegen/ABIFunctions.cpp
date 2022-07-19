@@ -498,7 +498,7 @@ string ABIFunctions::abiEncodingFunctionCalldataArrayWithoutCleanup(
 				);
 			templ("readableTypeNameFrom", _from.toString(true));
 			templ("readableTypeNameTo", _to.toString(true));
-			templ("copyFun", m_utils.copyToMemoryFunction(true));
+			templ("copyFun", m_utils.copyToMemoryFunction(true, false /*no cleanup*/));
 			templ("lengthPadded", needsPadding ? m_utils.roundUpFunction() + "(length)" : "length");
 			return templ.render();
 		}
@@ -514,7 +514,7 @@ string ABIFunctions::abiEncodingFunctionCalldataArrayWithoutCleanup(
 			templ("functionName", functionName);
 			templ("readableTypeNameFrom", _from.toString(true));
 			templ("readableTypeNameTo", _to.toString(true));
-			templ("copyFun", m_utils.copyToMemoryFunction(true));
+			templ("copyFun", m_utils.copyToMemoryFunction(true, false /*no cleanup*/));
 			templ("byteLength", toCompactHexWithPrefix(fromArrayType.length() * fromArrayType.calldataStride()));
 			return templ.render();
 		}
@@ -662,7 +662,7 @@ string ABIFunctions::abiEncodingFunctionMemoryByteArray(
 		templ("functionName", functionName);
 		templ("lengthFun", m_utils.arrayLengthFunction(_from));
 		templ("storeLength", arrayStoreLengthForEncodingFunction(_to, _options));
-		templ("copyFun", m_utils.copyToMemoryFunction(false));
+		templ("copyFun", m_utils.copyToMemoryFunction(false, true /* cleanup */));
 		templ("lengthPadded", _options.padded ? m_utils.roundUpFunction() + "(length)" : "length");
 		return templ.render();
 	});
@@ -1296,7 +1296,7 @@ string ABIFunctions::abiDecodingFunctionByteArrayAvailableLength(ArrayType const
 		templ("functionName", functionName);
 		templ("allocate", m_utils.allocationFunction());
 		templ("allocationSize", m_utils.arrayAllocationSizeFunction(_type));
-		templ("copyToMemFun", m_utils.copyToMemoryFunction(!_fromMemory));
+		templ("copyToMemFun", m_utils.copyToMemoryFunction(!_fromMemory, true /* cleanup */));
 		return templ.render();
 	});
 }
