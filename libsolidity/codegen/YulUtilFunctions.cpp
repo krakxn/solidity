@@ -684,17 +684,20 @@ string YulUtilFunctions::overflowCheckedIntMulFunction(IntegerType const& _type)
 				y := <cleanupFunction>(y)
 				product := mul(x, y)
 				<?signed>
-					// overflow, if product has positive sign and
-					// y != (p & bitMask) / x
+				// overflow if product has positive sign and y != (p & bitMask) / x
+				// 			OR product has negative sign and y != (p | !bitMask) / x
 					if and(
-						iszero(and(product, <signMask>)),
-						and(iszero(iszero(x)), iszero(eq(y, sdiv(and(product, <bitMask>),x))))
-					) { <panic>() }
-					// overflow, if product has negative sign and
-					// y != (p | !bitMask) / x
-					if and(
-						iszero(iszero(and(product, <signMask>))),
-						and(iszero(iszero(x)), iszero(eq(y, sdiv(or(product, not(<bitMask>)),x))))
+						iszero(iszero(x)),
+						or(
+							and(
+								iszero(and(product, <signMask>)),
+								iszero(eq(y, sdiv(and(product, <bitMask>),x)))
+							),
+							and(
+								iszero(iszero(and(product, <signMask>))),
+								iszero(eq(y, sdiv(or(product, not(<bitMask>)),x)))
+							)
+						)
 					) { <panic>() }
 				<!signed>
 					// overflow, if x != 0 and y != product/x

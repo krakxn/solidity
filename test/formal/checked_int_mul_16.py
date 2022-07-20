@@ -1,6 +1,6 @@
-from opcodes import AND, SDIV, SGT, SLT, MUL, EQ, ISZERO, NOT, OR
+from opcodes import AND, SDIV, MUL, EQ, ISZERO, NOT, OR
 from rule import Rule
-from util import BVSignedMax, BVSignedMin, BVSignedUpCast
+from util import BVSignedUpCast
 from z3 import BVMulNoOverflow, BVMulNoUnderflow, BitVec, BitVecVal, Not, Or
 
 """
