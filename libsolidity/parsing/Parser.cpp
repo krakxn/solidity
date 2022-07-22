@@ -1996,10 +1996,34 @@ ASTPointer<Expression> Parser::parseLiteral()
 	}
 	else if (m_scanner->currentToken() == Token::Identifier)
 	{
-		auto identifierPath = parseIdentifierPath();
-		nodeFactory.setEndPositionFromNode(identifierPath);
-		suffix = move(identifierPath);
+		// TODO: Should we still set the suffix here?
+		auto literal = nodeFactory.createNode<Literal>(initialToken, move(value));
+
+		// TODO: Make sure locations are set correctly
+		auto [name, nameLocation] = expectIdentifierWithLocation();
+		nodeFactory.markEndPosition();
+		ASTPointer<Expression> suffix = nodeFactory.createNode<Identifier>(name);
+
+		while (m_scanner->currentToken() == Token::Period)
+		{
+			advance();
+			nodeFactory.markEndPosition();
+			SourceLocation memberLocation = currentLocation();
+			ASTPointer<ASTString> memberName = expectIdentifierToken();
+			suffix = nodeFactory.createNode<MemberAccess>(suffix, move(memberName), move(memberLocation));
+		}
+
+		// NOTE: Even though the call always has a single argument, the function we end up calling
+		// make take two in case of decimals due to the mantissa/exponent decomposition.
+		FunctionCallArguments functionCallArguments = {{literal}, {}, {}};
+		return nodeFactory.createNode<FunctionCall>(
+			suffix,
+			functionCallArguments.arguments,
+			functionCallArguments.parameterNames,
+			functionCallArguments.parameterNameLocations
+		);
 	}
+
 	return nodeFactory.createNode<Literal>(initialToken, move(value), move(suffix));
 }
 
