@@ -28,8 +28,8 @@ for type_bits in [4, 8, 12, 16]:
 	product = MUL(X, Y)
 
 	# Constants
-	bitMask = (BitVecVal(1, n_bits) << type_bits) - 1
-	signMask = BitVecVal(1, n_bits) << type_bits - 1
+	bitMask = BitVecVal(2**type_bits - 1, n_bits)
+	signMask = BitVecVal(2**(type_bits-1), n_bits)
 
 	# Overflow and underflow checks in YulUtilFunction::overflowCheckedIntMulFunction
 	overflow_check_1 = AND(
